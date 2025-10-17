@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  mariadb:
+    image: mariadb:latest
+    container_name: skychat-mariadb
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: hackathon2024
+      MYSQL_DATABASE: skychat
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./src/database/schema:/docker-entrypoint-initdb.d
+    networks:
+      - skychat-network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: skychat-app
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: hackathon2024
+      DB_NAME: skychat
+      PORT: 5000
+      FLASK_ENV: development
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    networks:
+      - skychat-network
+
+volumes:
+  mariadb_data:
+
+networks:
+  skychat-network:
+    driver: bridge

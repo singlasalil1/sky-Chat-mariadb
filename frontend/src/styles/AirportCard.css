@@ -1,0 +1,57 @@
+.airport-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow);
+}
+
+.airport-card:hover {
+  border-color: var(--secondary);
+  box-shadow: 0 8px 20px rgba(236, 72, 153, 0.15);
+  transform: translateY(-2px);
+}
+
+.airport-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.airport-name {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.airport-code {
+  background: linear-gradient(135deg, var(--secondary) 0%, #f472b6 100%);
+  color: white;
+  padding: 0.35rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(236, 72, 153, 0.3);
+}
+
+.airport-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.airport-location {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.airport-routes,
+.airport-distance {
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
