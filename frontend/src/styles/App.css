@@ -5,44 +5,62 @@
 }
 
 :root {
-  --primary: #6366f1;
-  --primary-hover: #4f46e5;
-  --primary-light: #a5b4fc;
-  --accent: #f59e0b;
-  --accent-hover: #d97706;
-  --secondary: #ec4899;
+  /* Professional Color Palette */
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-light: #dbeafe;
+  --accent: #0891b2;
+  --accent-hover: #0e7490;
+  --secondary: #475569;
+
+  /* Backgrounds */
   --bg-light: #f8fafc;
   --bg-white: #ffffff;
-  --bg-accent: #fef3c7;
+  --bg-gray: #f1f5f9;
+  --bg-dark: #1e293b;
+
+  /* Text Colors */
   --text-primary: #0f172a;
   --text-secondary: #475569;
-  --text-muted: #94a3b8;
+  --text-muted: #64748b;
+  --text-light: #94a3b8;
+
+  /* Borders */
   --border: #e2e8f0;
   --border-dark: #cbd5e1;
-  --success: #10b981;
-  --error: #ef4444;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.08);
+  --border-light: #f1f5f9;
+
+  /* Status Colors */
+  --success: #059669;
+  --warning: #d97706;
+  --error: #dc2626;
+  --info: #0284c7;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
 }
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-  background: linear-gradient(to bottom, #f8fafc 0%, #f1f5f9 100%);
+  background: var(--bg-light);
   color: var(--text-primary);
   line-height: 1.6;
   min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
 .app {
   min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
-}
-
-.main-content {
-  flex: 1;
-  padding-top: 80px;
+  overflow: hidden;
 }
 
 .btn {
@@ -58,14 +76,14 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  background: var(--primary);
   color: white;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  box-shadow: var(--shadow);
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+  background: var(--primary-hover);
+  box-shadow: var(--shadow-md);
 }
 
 .btn-secondary {

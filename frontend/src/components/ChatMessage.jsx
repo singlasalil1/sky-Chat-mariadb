@@ -1,7 +1,8 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import '../styles/ChatMessage.css';
 
-const ChatMessage = memo(({ message, isUser, type, timestamp }) => {
+const ChatMessage = memo(({ message, isUser, type, timestamp, metrics }) => {
+  const [isFlipped, setIsFlipped] = useState(false);
   const formatMessage = (data) => {
     if (typeof data === 'string') {
       if (type === 'welcome') {
@@ -34,7 +35,7 @@ const ChatMessage = memo(({ message, isUser, type, timestamp }) => {
     }
 
     if (data.message && data.data) {
-      return (
+      const contentElement = (
         <div className="rich-content">
           <div className="content-header">
             <span className="content-icon">
@@ -89,6 +90,68 @@ const ChatMessage = memo(({ message, isUser, type, timestamp }) => {
           </div>
         </div>
       );
+
+      // If metrics are available, wrap in a flippable card
+      if (metrics) {
+        return (
+          <div className="flip-card-container">
+            <button
+              className="flip-icon-button"
+              onClick={() => setIsFlipped(!isFlipped)}
+              aria-label={isFlipped ? 'Show results' : 'Show metrics'}
+              title={isFlipped ? 'Show results' : 'Show performance metrics'}
+            >
+              {isFlipped ? '📊' : '⚡'}
+            </button>
+            <div className={`flip-card ${isFlipped ? 'flipped' : ''}`}>
+              <div className="flip-card-front">
+                {contentElement}
+              </div>
+              <div className="flip-card-back">
+                <div className="metrics-content">
+                  <div className="metrics-header">
+                    <h3>📊 Performance Metrics</h3>
+                  </div>
+
+                  <div className="metrics-section">
+                    <div className="metric-label">Query</div>
+                    <div className="metric-value-text">"{metrics.query}"</div>
+                  </div>
+
+                  <div className="metrics-section">
+                    <div className="metric-label">Total Response Time</div>
+                    <div className="metric-value-large">{metrics.totalTime}<span className="unit">ms</span></div>
+                  </div>
+
+                  <div className="metrics-section">
+                    <div className="metric-label">Results Found</div>
+                    <div className="metric-value-large">{metrics.resultCount}<span className="unit"> records</span></div>
+                  </div>
+
+                  <div className="metrics-divider"></div>
+
+                  <div className="metrics-section">
+                    <div className="metric-label">Execution Breakdown</div>
+                    <div className="metric-breakdown">
+                      <div className="breakdown-row">
+                        <span className="breakdown-label">Database Query</span>
+                        <span className="breakdown-value">{metrics.dbTime}</span>
+                      </div>
+                      <div className="breakdown-row">
+                        <span className="breakdown-label">Network + Processing*</span>
+                        <span className="breakdown-value">{metrics.networkTime}ms</span>
+                      </div>
+                    </div>
+                    <div className="metric-note">*Includes network latency, JSON parsing, and React rendering</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      return contentElement;
     }
 
     return <pre className="json-output">{JSON.stringify(data, null, 2)}</pre>;

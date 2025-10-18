@@ -1,4 +1,5 @@
 import mariadb
+import time
 from config import Config
 
 class DatabaseConnection:
@@ -34,9 +35,11 @@ class DatabaseConnection:
             raise
 
     @classmethod
-    def execute_query(cls, query, params=None, fetch=True):
+    def execute_query(cls, query, params=None, fetch=True, track_time=False):
         conn = None
         cursor = None
+        start_time = time.perf_counter() if track_time else None
+
         try:
             conn = cls.get_connection()
             cursor = conn.cursor(dictionary=True)
@@ -44,9 +47,17 @@ class DatabaseConnection:
 
             if fetch:
                 result = cursor.fetchall()
+                if track_time:
+                    end_time = time.perf_counter()
+                    execution_time = round((end_time - start_time) * 1000, 2)  # ms
+                    return result, execution_time
                 return result
             else:
                 conn.commit()
+                if track_time:
+                    end_time = time.perf_counter()
+                    execution_time = round((end_time - start_time) * 1000, 2)  # ms
+                    return cursor.lastrowid, execution_time
                 return cursor.lastrowid
         except mariadb.Error as e:
             print(f"Error executing query: {e}")

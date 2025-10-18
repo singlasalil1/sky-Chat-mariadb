@@ -39,7 +39,14 @@ def chat():
         except Exception as e:
             print(f"Error logging query: {e}")
 
-        return jsonify({'query': query, 'result': result})
+        # Extract metrics if available
+        metrics = result.get('metrics', {})
+
+        return jsonify({
+            'query': query,
+            'result': result,
+            'metrics': metrics
+        })
 
     except Exception as e:
         print(f"Chat error: {e}")

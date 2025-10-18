@@ -1,7 +1,12 @@
 import os
+import sys
 import csv
-import requests
-from connection import DatabaseConnection
+from pathlib import Path
+
+# Add parent directories to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from src.database.connection import DatabaseConnection
 from config import Config
 
 # OpenFlights data field mappings
@@ -16,20 +21,17 @@ ROUTE_FIELDS = ['airline_code', 'airline_id', 'source_airport',
                 'source_airport_id', 'dest_airport', 'dest_airport_id',
                 'codeshare', 'stops', 'equipment']
 
-def download_data(url, filename):
-    """Download data file from URL"""
-    print(f"Downloading {filename} from {url}...")
-    response = requests.get(url)
+def get_data_file(filename):
+    """Get path to data file"""
+    data_dir = Path(__file__).parent.parent.parent / 'data'
+    filepath = data_dir / filename
 
-    data_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'data')
-    os.makedirs(data_dir, exist_ok=True)
+    if not filepath.exists():
+        print(f"❌ Error: {filename} not found at {filepath}")
+        print("Please ensure the data files are downloaded first")
+        sys.exit(1)
 
-    filepath = os.path.join(data_dir, filename)
-    with open(filepath, 'wb') as f:
-        f.write(response.content)
-
-    print(f"Downloaded {filename} successfully!")
-    return filepath
+    return str(filepath)
 
 def import_csv(filepath, table_name, fields):
     """Import CSV data into database table"""
@@ -61,23 +63,37 @@ def import_csv(filepath, table_name, fields):
     return total
 
 def import_all_data():
-    """Download and import all OpenFlights data"""
+    """Import all OpenFlights data from local files"""
+    print("🚀 SkyChat Data Import Starting...")
+    print("=" * 60)
+
     try:
-        # Download and import airports
-        airports_file = download_data(Config.AIRPORTS_URL, 'airports.dat')
-        import_csv(airports_file, 'airports', AIRPORT_FIELDS)
+        # Get data files
+        airports_file = get_data_file('airports.dat')
+        airlines_file = get_data_file('airlines.dat')
+        routes_file = get_data_file('routes.dat')
 
-        # Download and import airlines
-        airlines_file = download_data(Config.AIRLINES_URL, 'airlines.dat')
-        import_csv(airlines_file, 'airlines', AIRLINE_FIELDS)
+        # Import airports first (foreign key dependency)
+        print("\n📍 Importing airports...")
+        airports_count = import_csv(airports_file, 'airports', AIRPORT_FIELDS)
 
-        # Download and import routes
-        routes_file = download_data(Config.ROUTES_URL, 'routes.dat')
-        import_csv(routes_file, 'routes', ROUTE_FIELDS)
+        # Import airlines
+        print("\n✈️  Importing airlines...")
+        airlines_count = import_csv(airlines_file, 'airlines', AIRLINE_FIELDS)
 
-        print("All data imported successfully!")
+        # Import routes
+        print("\n🌍 Importing routes...")
+        routes_count = import_csv(routes_file, 'routes', ROUTE_FIELDS)
+
+        print("\n" + "=" * 60)
+        print("🎉 Import Complete!")
+        print(f"   Airports: {airports_count:,}")
+        print(f"   Airlines: {airlines_count:,}")
+        print(f"   Routes:   {routes_count:,}")
+        print("=" * 60)
+
     except Exception as e:
-        print(f"Error importing data: {e}")
+        print(f"\n❌ Error importing data: {e}")
         raise
 
 if __name__ == "__main__":

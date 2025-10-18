@@ -14,14 +14,14 @@ const Navbar = () => {
       <div className="nav-container">
         <Link to="/" className="nav-brand">
           <span className="logo-icon">✈️</span>
-          <span className="logo-text">SkyChat</span>
+          <span className="logo-text">SkyChat <span className="logo-adventures">Adventures</span></span>
         </Link>
         <ul className="nav-menu">
           <li><Link to="/" className={isActive('/')}>Home</Link></li>
-          <li><Link to="/chat" className={isActive('/chat')}>Chat</Link></li>
-          <li><Link to="/search" className={isActive('/search')}>Search</Link></li>
+          <li><Link to="/chat" className={isActive('/chat')}>Assistant</Link></li>
+          <li><Link to="/adventures" className={isActive('/adventures')}>Adventures</Link></li>
+          <li><Link to="/search" className={isActive('/search')}>Explorer</Link></li>
           <li><Link to="/analytics" className={isActive('/analytics')}>Analytics</Link></li>
-          <li><Link to="/about" className={isActive('/about')}>About</Link></li>
         </ul>
       </div>
     </nav>

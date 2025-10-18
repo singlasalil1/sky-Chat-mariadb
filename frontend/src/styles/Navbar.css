@@ -36,6 +36,14 @@
   color: var(--primary);
 }
 
+.logo-adventures {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 800;
+}
+
 .nav-menu {
   display: flex;
   list-style: none;

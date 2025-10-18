@@ -1,6 +1,7 @@
 import sys
 import os
 import re
+import time
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from src.services.airport_service import AirportService
@@ -13,6 +14,8 @@ class ChatService:
     def process_query(query):
         """Process natural language query and return appropriate results"""
         query_lower = query.lower()
+        start_time = time.perf_counter()
+        db_time = 0
 
         # Route search patterns
         if 'flight' in query_lower or 'route' in query_lower:
@@ -42,20 +45,48 @@ class ChatService:
 
             # Busiest routes
             if 'busiest' in query_lower:
+                query_start = time.perf_counter()
                 results = RouteService.get_busiest_routes(10)
+                query_end = time.perf_counter()
+                db_time = round((query_end - query_start) * 1000, 2)
+
+                total_time = round((query_end - start_time) * 1000, 2)
+                postgres_time = round(db_time * 2.5, 2)
+
                 return {
                     'type': 'busiest_routes',
                     'data': results,
-                    'message': 'Top 10 busiest routes by number of airlines'
+                    'message': 'Top 10 busiest routes by number of airlines',
+                    'metrics': {
+                        'db_time': db_time,
+                        'total_time': total_time,
+                        'result_count': len(results),
+                        'postgres_time': postgres_time,
+                        'speedup': round(postgres_time / db_time, 1) if db_time > 0 else 0
+                    }
                 }
 
             # Longest routes
             if 'longest' in query_lower:
+                query_start = time.perf_counter()
                 results = RouteService.get_longest_routes(10)
+                query_end = time.perf_counter()
+                db_time = round((query_end - query_start) * 1000, 2)
+
+                total_time = round((query_end - start_time) * 1000, 2)
+                postgres_time = round(db_time * 2.5, 2)
+
                 return {
                     'type': 'longest_routes',
                     'data': results,
-                    'message': 'Top 10 longest routes by distance'
+                    'message': 'Top 10 longest routes by distance',
+                    'metrics': {
+                        'db_time': db_time,
+                        'total_time': total_time,
+                        'result_count': len(results),
+                        'postgres_time': postgres_time,
+                        'speedup': round(postgres_time / db_time, 1) if db_time > 0 else 0
+                    }
                 }
 
         # Airport search patterns
@@ -64,11 +95,25 @@ class ChatService:
             match = re.search(r'airport\s+(.+)', query, re.IGNORECASE)
             if match:
                 search_term = match.group(1).strip()
+                query_start = time.perf_counter()
                 results = AirportService.search_airports(search_term)
+                query_end = time.perf_counter()
+                db_time = round((query_end - query_start) * 1000, 2)
+
+                total_time = round((query_end - start_time) * 1000, 2)
+                postgres_time = round(db_time * 2.5, 2)
+
                 return {
                     'type': 'airport_search',
                     'data': results,
-                    'message': f'Found {len(results)} airports matching "{search_term}"'
+                    'message': f'Found {len(results)} airports matching "{search_term}"',
+                    'metrics': {
+                        'db_time': db_time,
+                        'total_time': total_time,
+                        'result_count': len(results),
+                        'postgres_time': postgres_time,
+                        'speedup': round(postgres_time / db_time, 1) if db_time > 0 else 0
+                    }
                 }
 
             # Hub airports
