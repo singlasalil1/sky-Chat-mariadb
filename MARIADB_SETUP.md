@@ -9,7 +9,7 @@
 
 ```bash
 # Install MariaDB via Homebrew
-brew install mariadb
+brew install mariadb 
 
 # Start MariaDB service
 brew services start mariadb
