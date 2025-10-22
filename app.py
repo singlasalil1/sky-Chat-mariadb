@@ -224,8 +224,37 @@ def get_routes_by_airline(iata):
 @app.route('/api/routes/from/<string:airport_iata>', methods=['GET'])
 def get_routes_from_airport(airport_iata):
     try:
-        results = RouteService.get_routes_from_airport(airport_iata)
-        return jsonify(results)
+        airline_filter = request.args.get('airline', None)
+        result = RouteService.get_routes_from_airport(airport_iata, airline_filter)
+        return jsonify({
+            'routes': result['data'],
+            'query_info': result['query_info']
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/routes/airlines-from/<string:airport_iata>', methods=['GET'])
+def get_airlines_from_airport(airport_iata):
+    try:
+        result = RouteService.get_airlines_from_airport(airport_iata)
+        return jsonify({
+            'airlines': result['data'],
+            'query_info': result['query_info']
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/routes/shortest-path', methods=['GET'])
+def find_shortest_path():
+    try:
+        source = request.args.get('from', '').upper()
+        dest = request.args.get('to', '').upper()
+
+        if not source or not dest:
+            return jsonify({'error': 'Both "from" and "to" parameters are required'}), 400
+
+        result = RouteService.find_shortest_path(source, dest)
+        return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

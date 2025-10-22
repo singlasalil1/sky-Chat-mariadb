@@ -73,8 +73,21 @@ export const getLongestRoutes = async (limit = 10) => {
   return response.data;
 };
 
-export const getRoutesFromAirport = async (iata) => {
-  const response = await api.get(`/routes/from/${iata}`);
+export const getRoutesFromAirport = async (iata, airlineFilter = null) => {
+  const url = airlineFilter
+    ? `/routes/from/${iata}?airline=${airlineFilter}`
+    : `/routes/from/${iata}`;
+  const response = await api.get(url);
+  return response.data;
+};
+
+export const getAirlinesFromAirport = async (iata) => {
+  const response = await api.get(`/routes/airlines-from/${iata}`);
+  return response.data;
+};
+
+export const findShortestPath = async (from, to) => {
+  const response = await api.get(`/routes/shortest-path?from=${from}&to=${to}`);
   return response.data;
 };
 
