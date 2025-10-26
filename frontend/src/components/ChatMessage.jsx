@@ -1,8 +1,7 @@
-import React, { memo, useState } from 'react';
+import React, { memo } from 'react';
 import '../styles/ChatMessage.css';
 
 const ChatMessage = memo(({ message, isUser, type, timestamp, metrics }) => {
-  const [isFlipped, setIsFlipped] = useState(false);
   const formatMessage = (data) => {
     if (typeof data === 'string') {
       if (type === 'welcome') {
@@ -11,11 +10,19 @@ const ChatMessage = memo(({ message, isUser, type, timestamp, metrics }) => {
             <h3>👋 {data}</h3>
             <p>I can help you with:</p>
             <ul className="capability-list">
-              <li>🛫 Finding flights between airports</li>
-              <li>🏢 Searching airports worldwide</li>
-              <li>✈️ Getting airline information</li>
-              <li>📊 Viewing route analytics</li>
+              <li>🛫 <strong>Classic Mode:</strong> Find flights from JFK to LAX, Show busiest routes</li>
+              <li>🤖 <strong>AI Mode (RAG):</strong> What are major hubs in Europe? Tell me about airlines flying to Asia</li>
+              <li>🏢 <strong>Airport Info:</strong> Search airports by city, country, or IATA code</li>
+              <li>✈️ <strong>Airline Data:</strong> Discover airlines, their routes, and coverage</li>
+              <li>📊 <strong>Route Analytics:</strong> Longest routes, busiest connections, hub analysis</li>
+              <li>🌍 <strong>Complex Queries:</strong> Which cities have multiple airports? What makes a hub airport?</li>
             </ul>
+            <div style={{ marginTop: '1rem', padding: '1rem', background: 'linear-gradient(135deg, #667eea20 0%, #764ba220 100%)', borderRadius: '8px', borderLeft: '3px solid #667eea' }}>
+              <strong>💡 Try asking:</strong><br/>
+              <span style={{ color: '#4a5568', fontSize: '0.9rem' }}>
+                "Compare routes from London and Paris" or "Tell me about hub airports in the Middle East"
+              </span>
+            </div>
           </div>
         );
       }
@@ -34,7 +41,97 @@ const ChatMessage = memo(({ message, isUser, type, timestamp, metrics }) => {
       );
     }
 
-    if (data.message && data.data) {
+    // Handle RAG responses
+    if (data.type === 'rag_response') {
+      // Deduplicate sources by title
+      const deduplicatedDocs = data.data?.context_documents
+        ? data.data.context_documents.filter((doc, index, self) =>
+            index === self.findIndex(d => d.title === doc.title)
+          )
+        : [];
+
+      const getDocTypeColor = (docType) => {
+        const colors = {
+          'airport': '#3b82f6',
+          'airline': '#10b981',
+          'route': '#f59e0b',
+          'hub': '#8b5cf6',
+          'default': '#6366f1'
+        };
+        return colors[docType?.toLowerCase()] || colors.default;
+      };
+
+      const getSimilarityColor = (similarity) => {
+        const score = similarity * 100;
+        if (score >= 80) return '#10b981'; // Green
+        if (score >= 60) return '#3b82f6'; // Blue
+        if (score >= 40) return '#f59e0b'; // Orange
+        return '#ef4444'; // Red
+      };
+
+      return (
+        <div className="rag-response">
+          <div className="rag-header">
+            <span className="rag-icon">🤖</span>
+            <span className="rag-badge">AI-Powered</span>
+          </div>
+          <div className="rag-content">
+            <p className="rag-message">{data.data?.message || data.message}</p>
+          </div>
+          {deduplicatedDocs.length > 0 && (
+            <div className="rag-sources">
+              <div className="sources-header">
+                <span className="sources-icon">📚</span>
+                <span className="sources-title">
+                  Knowledge Sources
+                  <span className="sources-count">{deduplicatedDocs.length}</span>
+                </span>
+              </div>
+              <div className="sources-list">
+                {deduplicatedDocs.map((doc, index) => {
+                  const similarityScore = (doc.similarity * 100).toFixed(1);
+                  return (
+                    <div key={index} className="source-item">
+                      <div className="source-header">
+                        <span className="source-number">{index + 1}</span>
+                        <span
+                          className="doc-type-badge"
+                          style={{ backgroundColor: getDocTypeColor(doc.doc_type) }}
+                        >
+                          {doc.doc_type || 'document'}
+                        </span>
+                      </div>
+                      <div className="source-body">
+                        <span className="source-title">{doc.title}</span>
+                        <div className="similarity-indicator">
+                          <div className="similarity-bar-container">
+                            <div
+                              className="similarity-bar-fill"
+                              style={{
+                                width: `${similarityScore}%`,
+                                backgroundColor: getSimilarityColor(doc.similarity)
+                              }}
+                            ></div>
+                          </div>
+                          <span
+                            className="similarity-score"
+                            style={{ color: getSimilarityColor(doc.similarity) }}
+                          >
+                            {similarityScore}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (data.message && data.data && Array.isArray(data.data)) {
       const contentElement = (
         <div className="rich-content">
           <div className="content-header">
@@ -91,66 +188,6 @@ const ChatMessage = memo(({ message, isUser, type, timestamp, metrics }) => {
         </div>
       );
 
-      // If metrics are available, wrap in a flippable card
-      if (metrics) {
-        return (
-          <div className="flip-card-container">
-            <button
-              className="flip-icon-button"
-              onClick={() => setIsFlipped(!isFlipped)}
-              aria-label={isFlipped ? 'Show results' : 'Show metrics'}
-              title={isFlipped ? 'Show results' : 'Show performance metrics'}
-            >
-              {isFlipped ? '📊' : '⚡'}
-            </button>
-            <div className={`flip-card ${isFlipped ? 'flipped' : ''}`}>
-              <div className="flip-card-front">
-                {contentElement}
-              </div>
-              <div className="flip-card-back">
-                <div className="metrics-content">
-                  <div className="metrics-header">
-                    <h3>📊 Performance Metrics</h3>
-                  </div>
-
-                  <div className="metrics-section">
-                    <div className="metric-label">Query</div>
-                    <div className="metric-value-text">"{metrics.query}"</div>
-                  </div>
-
-                  <div className="metrics-section">
-                    <div className="metric-label">Total Response Time</div>
-                    <div className="metric-value-large">{metrics.totalTime}<span className="unit">ms</span></div>
-                  </div>
-
-                  <div className="metrics-section">
-                    <div className="metric-label">Results Found</div>
-                    <div className="metric-value-large">{metrics.resultCount}<span className="unit"> records</span></div>
-                  </div>
-
-                  <div className="metrics-divider"></div>
-
-                  <div className="metrics-section">
-                    <div className="metric-label">Execution Breakdown</div>
-                    <div className="metric-breakdown">
-                      <div className="breakdown-row">
-                        <span className="breakdown-label">Database Query</span>
-                        <span className="breakdown-value">{metrics.dbTime}</span>
-                      </div>
-                      <div className="breakdown-row">
-                        <span className="breakdown-label">Network + Processing*</span>
-                        <span className="breakdown-value">{metrics.networkTime}ms</span>
-                      </div>
-                    </div>
-                    <div className="metric-note">*Includes network latency, JSON parsing, and React rendering</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      }
-
       return contentElement;
     }
 
@@ -165,24 +202,20 @@ const ChatMessage = memo(({ message, isUser, type, timestamp, metrics }) => {
 
   return (
     <div className={`chat-message ${isUser ? 'user-message' : 'bot-message'} ${type || ''}`}>
-      {!isUser && (
-        <div className="message-avatar bot-avatar">
-          <span>🤖</span>
-        </div>
-      )}
       <div className="message-wrapper">
         <div className="message-content">
+          {!isUser && metrics && metrics.totalTime && (
+            <div className="response-time-badge">
+              <span className="response-time-icon">⚡</span>
+              <span className="response-time-value">{metrics.totalTime}ms</span>
+            </div>
+          )}
           {formatMessage(message)}
         </div>
         {timestamp && (
           <div className="message-timestamp">{formatTime(timestamp)}</div>
         )}
       </div>
-      {isUser && (
-        <div className="message-avatar user-avatar">
-          <span>👤</span>
-        </div>
-      )}
     </div>
   );
 });

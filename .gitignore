@@ -4,3 +4,4 @@ node_modules/
 data/*.dat
 data/*.csv
 *.log
+__pycache__

@@ -1,18 +1,21 @@
 version: '3.8'
 
 services:
+  # MariaDB Database
   mariadb:
-    image: mariadb:latest
+    image: mariadb:11.2
     container_name: skychat-mariadb
-    restart: always
+    restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: hackathon2024
-      MYSQL_DATABASE: skychat
+      MARIADB_ROOT_PASSWORD: ${DB_PASSWORD:-skychat123}
+      MARIADB_DATABASE: ${DB_NAME:-skychat}
+      MARIADB_USER: ${DB_USER:-skychat_user}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-skychat123}
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mariadb_data:/var/lib/mysql
-      - ./src/database/schema:/docker-entrypoint-initdb.d
+      - ./src/database/schema:/docker-entrypoint-initdb.d:ro
     networks:
       - skychat-network
     healthcheck:
@@ -21,30 +24,143 @@ services:
       timeout: 5s
       retries: 5
 
-  app:
-    build: .
-    container_name: skychat-app
-    restart: always
+  # Ollama for Local LLM
+  ollama:
+    image: ollama/ollama:latest
+    container_name: skychat-ollama
+    restart: unless-stopped
     ports:
-      - "5000:5000"
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - skychat-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Ollama Model Puller (runs once to download model)
+  ollama-setup:
+    image: ollama/ollama:latest
+    container_name: skychat-ollama-setup
+    depends_on:
+      ollama:
+        condition: service_healthy
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - skychat-network
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Waiting for Ollama service..."
+        sleep 10
+        echo "Pulling llama3.2:1b model..."
+        ollama pull llama3.2:1b
+        echo "Model downloaded successfully!"
+    restart: "no"
+
+  # Backend Flask Application
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: skychat-backend
+    restart: unless-stopped
+    ports:
+      - "5002:5002"
     environment:
-      DB_HOST: mariadb
-      DB_PORT: 3306
-      DB_USER: root
-      DB_PASSWORD: hackathon2024
-      DB_NAME: skychat
-      PORT: 5000
-      FLASK_ENV: development
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_NAME=${DB_NAME:-skychat}
+      - DB_USER=${DB_USER:-skychat_user}
+      - DB_PASSWORD=${DB_PASSWORD:-skychat123}
+      - PORT=5002
+      - FLASK_ENV=production
+      - RAG_ENABLED=true
+      - RAG_DEFAULT_MODE=hybrid
+      - EMBEDDING_PROVIDER=sentence-transformers
+      - LLM_PROVIDER=ollama
+      - LLM_MODEL=llama3.2:1b
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - RAG_TOP_K=5
+      - RAG_MIN_SIMILARITY=0.3
+      - RAG_TEMPERATURE=0.7
+    volumes:
+      - ./src:/app/src:ro
+      - ./config.py:/app/config.py:ro
+    networks:
+      - skychat-network
     depends_on:
       mariadb:
         condition: service_healthy
-    volumes:
-      - .:/app
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend React Application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: skychat-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
     networks:
       - skychat-network
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # RAG Setup Service (runs once to build knowledge base)
+  rag-setup:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: skychat-rag-setup
+    environment:
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_NAME=${DB_NAME:-skychat}
+      - DB_USER=${DB_USER:-skychat_user}
+      - DB_PASSWORD=${DB_PASSWORD:-skychat123}
+      - EMBEDDING_PROVIDER=sentence-transformers
+      - LLM_PROVIDER=ollama
+      - LLM_MODEL=llama3.2:1b
+      - OLLAMA_BASE_URL=http://ollama:11434
+    networks:
+      - skychat-network
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      ollama-setup:
+        condition: service_completed_successfully
+    command: >
+      sh -c "
+        echo 'Waiting for backend to be ready...'
+        sleep 30
+        echo 'Building RAG knowledge base...'
+        python3 setup_rag.py --airport-limit 100 --airline-limit 50 --route-limit 200
+        echo 'RAG setup completed!'
+      "
+    restart: "no"
 
 volumes:
   mariadb_data:
+    driver: local
+  ollama_data:
+    driver: local
 
 networks:
   skychat-network:

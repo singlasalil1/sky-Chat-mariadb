@@ -10,8 +10,8 @@ const api = axios.create({
 });
 
 // Chat API
-export const sendChatMessage = async (query, sessionId = 'default') => {
-  const response = await api.post('/chat', { query, sessionId });
+export const sendChatMessage = async (query, sessionId = 'default', mode = 'hybrid') => {
+  const response = await api.post('/chat', { query, sessionId, mode });
   return response.data;
 };
 

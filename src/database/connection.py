@@ -90,3 +90,9 @@ class DatabaseConnection:
                 cursor.close()
             if conn:
                 conn.close()
+
+
+# Helper function for backward compatibility
+def get_connection():
+    """Get a database connection from the pool."""
+    return DatabaseConnection.get_connection()

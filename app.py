@@ -27,11 +27,13 @@ def chat():
         data = request.get_json()
         query = data.get('query')
         session_id = data.get('sessionId', 'default')
+        mode = data.get('mode', 'hybrid')  # 'classic', 'rag', or 'hybrid'
 
         if not query:
             return jsonify({'error': 'Query is required'}), 400
 
-        result = ChatService.process_query(query)
+        # Process query with specified mode
+        result = ChatService.process_query(query, mode=mode, session_id=session_id)
 
         # Log query (optional)
         try:
@@ -45,12 +47,58 @@ def chat():
         return jsonify({
             'query': query,
             'result': result,
-            'metrics': metrics
+            'metrics': metrics,
+            'mode': mode
         })
 
     except Exception as e:
         print(f"Chat error: {e}")
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
+
+# RAG endpoints
+@app.route('/api/rag/status', methods=['GET'])
+def rag_status():
+    """Get RAG system status and configuration"""
+    try:
+        rag_service = ChatService.get_rag_service()
+
+        if not rag_service:
+            return jsonify({
+                'enabled': False,
+                'message': 'RAG service not available'
+            })
+
+        stats = rag_service.get_statistics()
+        return jsonify({
+            'enabled': True,
+            'statistics': stats,
+            'config': {
+                'default_mode': Config.RAG_DEFAULT_MODE,
+                'top_k': Config.RAG_TOP_K,
+                'min_similarity': Config.RAG_MIN_SIMILARITY,
+                'temperature': Config.RAG_TEMPERATURE
+            }
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/rag/session/<session_id>', methods=['GET'])
+def get_session_history(session_id):
+    """Get RAG query history for a session"""
+    try:
+        rag_service = ChatService.get_rag_service()
+        if not rag_service:
+            return jsonify({'error': 'RAG service not available'}), 503
+
+        limit = request.args.get('limit', 10, type=int)
+        history = rag_service.get_session_history(session_id, limit)
+
+        return jsonify({
+            'session_id': session_id,
+            'history': history
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # Airport endpoints
 @app.route('/api/airports/search', methods=['GET'])

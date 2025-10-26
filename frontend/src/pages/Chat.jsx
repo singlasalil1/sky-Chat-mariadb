@@ -10,7 +10,7 @@ import '../styles/Chat.css';
 const Chat = () => {
   const [messages, setMessages] = useState([
     {
-      text: "Welcome to SkyChat Adventures! I'm your flight intelligence companion. Ask me anything about flights, airports, or try our detective mysteries!",
+      text: "Welcome to SkyChat! I'm your AI-powered flight intelligence assistant. I can help you with structured queries and conversational questions using RAG technology.",
       type: 'welcome',
       isUser: false,
       id: Date.now()
@@ -37,12 +37,38 @@ const Chat = () => {
   }, [messages, scrollToBottom]);
 
   const suggestions = useMemo(() => [
+    // Classic Mode - Structured Queries
     'Find flights from JFK to LAX',
     'Search airport London',
     'Show busiest routes',
     'Show longest flights',
     'Routes from SFO',
-    'Airlines in USA'
+    'Airlines in USA',
+    'Find flights from LHR to DXB',
+    'Search airport Tokyo',
+    'Routes from CDG',
+
+    // RAG Mode - Conversational Queries
+    'What are the major hub airports in Europe?',
+    'Tell me about airlines that fly to Asia',
+    'Which airports are located in the Middle East?',
+    'What routes connect North America to Australia?',
+    'Explain the difference between IATA and ICAO codes',
+    'What are the busiest international flight routes?',
+    'Which airlines operate the most routes globally?',
+    'Tell me about airports in island nations',
+    'What are common connection points for transatlantic flights?',
+    'Which cities have multiple major airports?',
+
+    // Complex Multi-Part Queries
+    'What airlines fly from New York and what are their main destinations?',
+    'Compare routes from London Heathrow and Paris Charles de Gaulle',
+    'Which Asian cities are major aviation hubs and why?',
+    'What are the longest non-stop flight routes in the world?',
+    'Tell me about low-cost carriers and where they typically operate',
+    'What makes an airport a "hub" and which are the biggest?',
+    'How do airline alliances affect route networks?',
+    'What airports serve as gateways to South America?'
   ], []);
 
   const getRelevantQuestions = useCallback(() => {
@@ -120,23 +146,38 @@ const Chat = () => {
       const endTime = Date.now();
       const totalTime = endTime - startTime;
 
-      // Always create metrics data for every response
+      // Create metrics data - handle both classic and RAG responses
       const backendMetrics = response.metrics || {};
-      const dbTime = backendMetrics.db_time || totalTime - 50; // Estimate if not provided
-      const resultCount = backendMetrics.result_count || (response.result?.data?.length || 0);
-      const postgresTime = backendMetrics.postgres_time || 0;
-      const speedup = backendMetrics.speedup || 0;
-      const networkTime = totalTime - dbTime; // Frontend overhead + network
+      let metricsData;
 
-      const metricsData = {
-        totalTime: totalTime,
-        dbTime: `${dbTime}ms`,
-        networkTime: `${networkTime}ms`,
-        postgresTotal: postgresTime ? `${postgresTime}ms` : 'N/A',
-        speedup: speedup ? `${speedup}x` : 'N/A',
-        resultCount: resultCount,
-        query: userMessage
-      };
+      if (response.result?.type === 'rag_response') {
+        // RAG response metrics
+        const ragMetrics = response.result.metrics || backendMetrics;
+        metricsData = {
+          totalTime: ragMetrics.total_time_ms || totalTime,
+          dbTime: `${ragMetrics.retrieval_time_ms || 0}ms`,
+          networkTime: `${totalTime - (ragMetrics.total_time_ms || 0)}ms`,
+          resultCount: ragMetrics.documents_retrieved || 0,
+          query: userMessage
+        };
+      } else {
+        // Classic response metrics
+        const dbTime = backendMetrics.db_time || totalTime - 50;
+        const resultCount = backendMetrics.result_count || (response.result?.data?.length || 0);
+        const postgresTime = backendMetrics.postgres_time || 0;
+        const speedup = backendMetrics.speedup || 0;
+        const networkTime = totalTime - dbTime;
+
+        metricsData = {
+          totalTime: totalTime,
+          dbTime: `${dbTime}ms`,
+          networkTime: `${networkTime}ms`,
+          postgresTotal: postgresTime ? `${postgresTime}ms` : 'N/A',
+          speedup: speedup ? `${speedup}x` : 'N/A',
+          resultCount: resultCount,
+          query: userMessage
+        };
+      }
 
       setQueryMetrics(metricsData);
 
@@ -208,23 +249,38 @@ const Chat = () => {
           const endTime = Date.now();
           const totalTime = endTime - startTime;
 
-          // Always create metrics data for every response
+          // Create metrics data - handle both classic and RAG responses
           const backendMetrics = response.metrics || {};
-          const dbTime = backendMetrics.db_time || totalTime - 50; // Estimate if not provided
-          const resultCount = backendMetrics.result_count || (response.result?.data?.length || 0);
-          const postgresTime = backendMetrics.postgres_time || 0;
-          const speedup = backendMetrics.speedup || 0;
-          const networkTime = totalTime - dbTime;
+          let metricsData;
 
-          const metricsData = {
-            totalTime: totalTime,
-            dbTime: `${dbTime}ms`,
-            networkTime: `${networkTime}ms`,
-            postgresTotal: postgresTime ? `${postgresTime}ms` : 'N/A',
-            speedup: speedup ? `${speedup}x` : 'N/A',
-            resultCount: resultCount,
-            query: query
-          };
+          if (response.result?.type === 'rag_response') {
+            // RAG response metrics
+            const ragMetrics = response.result.metrics || backendMetrics;
+            metricsData = {
+              totalTime: ragMetrics.total_time_ms || totalTime,
+              dbTime: `${ragMetrics.retrieval_time_ms || 0}ms`,
+              networkTime: `${totalTime - (ragMetrics.total_time_ms || 0)}ms`,
+              resultCount: ragMetrics.documents_retrieved || 0,
+              query: query
+            };
+          } else {
+            // Classic response metrics
+            const dbTime = backendMetrics.db_time || totalTime - 50;
+            const resultCount = backendMetrics.result_count || (response.result?.data?.length || 0);
+            const postgresTime = backendMetrics.postgres_time || 0;
+            const speedup = backendMetrics.speedup || 0;
+            const networkTime = totalTime - dbTime;
+
+            metricsData = {
+              totalTime: totalTime,
+              dbTime: `${dbTime}ms`,
+              networkTime: `${networkTime}ms`,
+              postgresTotal: postgresTime ? `${postgresTime}ms` : 'N/A',
+              speedup: speedup ? `${speedup}x` : 'N/A',
+              resultCount: resultCount,
+              query: query
+            };
+          }
 
           setQueryMetrics(metricsData);
 
@@ -296,15 +352,11 @@ const Chat = () => {
               />
             ))}
 
-            {messages.length === 1 && !isLoading && showSuggestions && (
+            {!isLoading && showSuggestions && (
               <SmartSuggestions onSelectQuery={handleSmartQuerySelect} />
             )}
 
-            {messages.length > 1 && !isLoading && showSuggestions && (
-              <SmartSuggestions onSelectQuery={handleSmartQuerySelect} />
-            )}
-
-            {messages.length > 1 && !isLoading && !showSuggestions && (
+            {!isLoading && !showSuggestions && messages.length > 1 && (
               <button
                 className="show-suggestions-btn"
                 onClick={() => setShowSuggestions(true)}
