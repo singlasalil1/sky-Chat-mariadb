@@ -2,6 +2,7 @@ import os
 import sys
 import csv
 from pathlib import Path
+from urllib.request import urlopen
 
 # Add parent directories to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -21,15 +22,23 @@ ROUTE_FIELDS = ['airline_code', 'airline_id', 'source_airport',
                 'source_airport_id', 'dest_airport', 'dest_airport_id',
                 'codeshare', 'stops', 'equipment']
 
-def get_data_file(filename):
-    """Get path to data file"""
-    data_dir = Path(__file__).parent.parent.parent / 'data'
-    filepath = data_dir / filename
+DATA_DIR = Path(__file__).parent.parent.parent / 'data'
+
+
+def ensure_data_file(filename, url):
+    """Ensure dataset file exists locally, downloading if needed"""
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    filepath = DATA_DIR / filename
 
     if not filepath.exists():
-        print(f"❌ Error: {filename} not found at {filepath}")
-        print("Please ensure the data files are downloaded first")
-        sys.exit(1)
+        print(f"Downloading {filename} from {url}...")
+        try:
+            with urlopen(url) as response, open(filepath, 'wb') as out_file:
+                out_file.write(response.read())
+        except Exception as exc:
+            print(f"❌ Error downloading {filename}: {exc}")
+            print(f"Please download the file manually and place it at {filepath}")
+            sys.exit(1)
 
     return str(filepath)
 
@@ -69,9 +78,9 @@ def import_all_data():
 
     try:
         # Get data files
-        airports_file = get_data_file('airports.dat')
-        airlines_file = get_data_file('airlines.dat')
-        routes_file = get_data_file('routes.dat')
+        airports_file = ensure_data_file('airports.dat', Config.AIRPORTS_URL)
+        airlines_file = ensure_data_file('airlines.dat', Config.AIRLINES_URL)
+        routes_file = ensure_data_file('routes.dat', Config.ROUTES_URL)
 
         # Import airports first (foreign key dependency)
         print("\n📍 Importing airports...")

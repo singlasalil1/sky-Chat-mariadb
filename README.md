@@ -62,13 +62,13 @@ sky-Chat-mariadb/
 
 3. **Setup database and import data**:
    ```bash
-   docker exec -it skychat-app python src/database/setup.py
-   docker exec -it skychat-app python src/database/import_data.py
+   docker exec -it skychat-backend python src/database/setup.py
+   docker exec -it skychat-backend python src/database/import_data.py
    ```
 
 4. **Access the application**:
-   - Frontend: http://localhost:5000
-   - API: http://localhost:5000/api
+   - Frontend: http://localhost:3000
+   - API: http://localhost:5002/api
 
 ### Option 2: Local Development
 
