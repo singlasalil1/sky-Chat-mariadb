@@ -1,238 +1,113 @@
 import React from 'react';
 import '../styles/SmartSuggestions.css';
 
-const SmartSuggestions = ({ onSelectQuery }) => {
-  const suggestions = [
-    {
-      category: '🌍 Flight Routes',
-      icon: '✈️',
-      queries: [
-        {
-          text: 'Find flights from JFK to LAX',
-          tag: 'Direct Routes',
-          complexity: 'Simple'
-        },
-        {
-          text: 'Show me routes from LHR to DXB',
-          tag: 'International',
-          complexity: 'Simple'
-        },
-        {
-          text: 'What routes connect North America to Australia?',
-          tag: 'RAG Query',
-          complexity: 'Complex'
-        }
-      ]
-    },
-    {
-      category: '🎯 Airport Intelligence',
-      icon: '🔍',
-      queries: [
-        {
-          text: 'Search airport London',
-          tag: 'City Search',
-          complexity: 'Simple'
-        },
-        {
-          text: 'What are the major hub airports in Europe?',
-          tag: 'RAG Analysis',
-          complexity: 'Complex'
-        },
-        {
-          text: 'Which cities have multiple major airports?',
-          tag: 'RAG Query',
-          complexity: 'Advanced'
-        }
-      ]
-    },
-    {
-      category: '🤖 AI-Powered Queries',
-      icon: '🚀',
-      queries: [
-        {
-          text: 'Tell me about airlines that fly to Asia',
-          tag: 'RAG Analysis',
-          complexity: 'Complex'
-        },
-        {
-          text: 'What makes an airport a hub and which are the biggest?',
-          tag: 'RAG Explain',
-          complexity: 'Advanced'
-        },
-        {
-          text: 'Compare routes from London Heathrow and Paris CDG',
-          tag: 'RAG Compare',
-          complexity: 'Expert'
-        }
-      ]
-    },
-    {
-      category: '💡 Advanced Analytics',
-      icon: '📊',
-      queries: [
-        {
-          text: 'Show me the busiest routes',
-          tag: 'Analytics',
-          complexity: 'Medium'
-        },
-        {
-          text: 'What are the longest non-stop flight routes in the world?',
-          tag: 'RAG Analysis',
-          complexity: 'Complex'
-        },
-        {
-          text: 'Which Asian cities are major aviation hubs and why?',
-          tag: 'RAG Insights',
-          complexity: 'Expert'
-        }
-      ]
-    },
-    {
-      category: '🌐 Regional Insights',
-      icon: '🗺️',
-      queries: [
-        {
-          text: 'Find airlines in USA',
-          tag: 'Regional',
-          complexity: 'Simple'
-        },
-        {
-          text: 'What airports serve as gateways to South America?',
-          tag: 'RAG Query',
-          complexity: 'Advanced'
-        },
-        {
-          text: 'Tell me about airports in island nations',
-          tag: 'RAG Analysis',
-          complexity: 'Complex'
-        }
-      ]
-    },
-    {
-      category: '🎓 Aviation Knowledge',
-      icon: '📚',
-      queries: [
-        {
-          text: 'Explain the difference between IATA and ICAO codes',
-          tag: 'RAG Explain',
-          complexity: 'Medium'
-        },
-        {
-          text: 'What are common connection points for transatlantic flights?',
-          tag: 'RAG Insights',
-          complexity: 'Advanced'
-        },
-        {
-          text: 'How do airline alliances affect route networks?',
-          tag: 'RAG Analysis',
-          complexity: 'Expert'
-        },
-        {
-          text: 'What airlines are part of Star Alliance?',
-          tag: 'RAG Query',
-          complexity: 'Medium'
-        },
-        {
-          text: 'How do codeshare agreements work?',
-          tag: 'RAG Explain',
-          complexity: 'Complex'
-        },
-        {
-          text: 'Which alliance has the most destinations?',
-          tag: 'RAG Compare',
-          complexity: 'Medium'
-        },
-        {
-          text: 'How do hub airports coordinate with alliances?',
-          tag: 'RAG Analysis',
-          complexity: 'Advanced'
-        }
-      ]
-    }
-  ];
+const fallbackPrompts = [
+  {
+    id: 'direct-routes',
+    icon: '✈️',
+    title: 'Plan direct flights',
+    description: 'Discover nonstop options and operating airlines between two airports.',
+    prompt: 'Find flights from JFK to LAX',
+    tone: 'Classic'
+  },
+  {
+    id: 'hub-comparison',
+    icon: '🧠',
+    title: 'Compare global hubs',
+    description: 'See how major airports stack up on routes, capacity, and coverage.',
+    prompt: 'Which airports are the major hubs in Europe and why?',
+    tone: 'AI Insight'
+  },
+  {
+    id: 'alliance-analytics',
+    icon: '🤝',
+    title: 'Understand alliances',
+    description: 'Break down alliance reach, member carriers, and strategic advantages.',
+    prompt: 'How do airline alliances affect route networks?',
+    tone: 'Analytics'
+  },
+  {
+    id: 'regional-explorer',
+    icon: '🌍',
+    title: 'Explore regions',
+    description: 'Uncover the airlines and routes connecting continents or corridors.',
+    prompt: 'What routes connect North America to Australia?',
+    tone: 'Explorer'
+  },
+  {
+    id: 'city-airlines',
+    icon: '🛫',
+    title: 'Discover city airlines',
+    description: 'Find which carriers operate from a specific city or airport.',
+    prompt: 'Which airlines operate from Singapore?',
+    tone: 'Data'
+  },
+  {
+    id: 'aviation-knowledge',
+    icon: '💡',
+    title: 'Decode aviation terms',
+    description: 'Let SkyChat explain the concepts behind aviation codes and processes.',
+    prompt: 'Explain the difference between IATA and ICAO codes.',
+    tone: 'AI Insight'
+  }
+];
 
-  const getComplexityColor = (complexity) => {
-    switch (complexity) {
-      case 'Simple':
-        return '#10b981';
-      case 'Medium':
-        return '#3b82f6';
-      case 'Complex':
-        return '#f59e0b';
-      case 'Advanced':
-        return '#8b5cf6';
-      case 'Expert':
-        return '#ef4444';
-      default:
-        return '#6366f1';
-    }
+const SmartSuggestions = ({ onSelectQuery = () => {}, prompts }) => {
+  const availablePrompts = Array.isArray(prompts) && prompts.length > 0 ? prompts : fallbackPrompts;
+
+  const formatToneClass = (tone) => {
+    if (!tone) return '';
+    return `tone-${tone.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
   };
 
   return (
     <div className="smart-suggestions-container">
       <div className="suggestions-header">
-        <h3 className="suggestions-title">
-          <span className="title-icon">💡</span>
-          Try Natural Language Queries
-        </h3>
-        <p className="suggestions-subtitle">
-          These queries would break traditional systems - but SkyChat understands them all
+        <div className="suggestions-heading">
+          <span className="sparkle">✨</span>
+          Starter prompts
+        </div>
+        <p className="suggestions-subtext">
+          Pick a card to auto-fill the chat or type your own question.
         </p>
       </div>
 
-      <div className="suggestions-grid">
-        {suggestions.map((category, catIndex) => (
-          <div key={catIndex} className="suggestion-category">
-            <h4 className="category-header">
-              <span className="category-icon">{category.icon}</span>
-              {category.category}
-            </h4>
-            <div className="category-queries">
-              {category.queries.map((query, queryIndex) => (
-                <button
-                  key={queryIndex}
-                  className="query-card"
-                  onClick={() => onSelectQuery(query.text)}
-                >
-                  <div className="query-text">{query.text}</div>
-                  <div className="query-meta">
-                    <span className="query-tag">{query.tag}</span>
-                    <span
-                      className="query-complexity"
-                      style={{ backgroundColor: getComplexityColor(query.complexity) }}
-                    >
-                      {query.complexity}
-                    </span>
+      <div className="prompts-grid">
+        {availablePrompts.map(({ id, icon, title, description, prompt, tone }) => {
+          const toneClass = formatToneClass(tone);
+          const key = id || prompt;
+
+          return (
+            <button
+              key={key}
+              type="button"
+              className="prompt-card"
+              onClick={() => onSelectQuery(prompt)}
+            >
+              <div className="prompt-top">
+                <div className="prompt-icon">{icon || '💬'}</div>
+                <div className="prompt-info">
+                  <div className="prompt-title-row">
+                    <span className="prompt-label">{title}</span>
+                    {tone && (
+                      <span className={`prompt-badge ${toneClass}`}>
+                        {tone}
+                      </span>
+                    )}
                   </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
+                  {description && (
+                    <p className="prompt-description">{description}</p>
+                  )}
+                </div>
+              </div>
+              <span className="prompt-example">“{prompt}”</span>
+            </button>
+          );
+        })}
       </div>
 
-      <div className="suggestions-footer">
-        <div className="footer-stat">
-          <span className="footer-icon">🧮</span>
-          <div className="footer-content">
-            <span className="footer-label">Vector Search</span>
-            <span className="footer-value">67,000+ embeddings</span>
-          </div>
-        </div>
-        <div className="footer-stat">
-          <span className="footer-icon">⚡</span>
-          <div className="footer-content">
-            <span className="footer-label">Response Time</span>
-            <span className="footer-value">&lt; 500ms</span>
-          </div>
-        </div>
-        <div className="footer-stat">
-          <span className="footer-icon">🎯</span>
-          <div className="footer-content">
-            <span className="footer-label">Accuracy</span>
-            <span className="footer-value">96% semantic match</span>
-          </div>
-        </div>
+      <div className="prompt-footer">
+        Tip: Shift + Enter adds a newline. SkyChat keeps context across messages.
       </div>
     </div>
   );

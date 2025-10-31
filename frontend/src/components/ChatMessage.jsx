@@ -10,17 +10,14 @@ const ChatMessage = memo(({ message, isUser, type, timestamp, metrics }) => {
             <h3>👋 {data}</h3>
             <p>I can help you with:</p>
             <ul className="capability-list">
-              <li>🛫 <strong>Classic Mode:</strong> Find flights from JFK to LAX, Show busiest routes</li>
-              <li>🤖 <strong>AI Mode (RAG):</strong> What are major hubs in Europe? Tell me about airlines flying to Asia</li>
-              <li>🏢 <strong>Airport Info:</strong> Search airports by city, country, or IATA code</li>
-              <li>✈️ <strong>Airline Data:</strong> Discover airlines, their routes, and coverage</li>
-              <li>📊 <strong>Route Analytics:</strong> Longest routes, busiest connections, hub analysis</li>
-              <li>🌍 <strong>Complex Queries:</strong> Which cities have multiple airports? What makes a hub airport?</li>
+              <li>🛫 <strong>Route lookups:</strong> Surface nonstop and connecting flights between airports.</li>
+              <li>🤖 <strong>AI insights:</strong> Ask about hubs, alliances, or regional market trends.</li>
+              <li>📊 <strong>Analytics:</strong> Compare airports, airlines, and long-haul route performance.</li>
             </ul>
             <div style={{ marginTop: '1rem', padding: '1rem', background: 'linear-gradient(135deg, #667eea20 0%, #764ba220 100%)', borderRadius: '8px', borderLeft: '3px solid #667eea' }}>
               <strong>💡 Try asking:</strong><br/>
               <span style={{ color: '#4a5568', fontSize: '0.9rem' }}>
-                "Compare routes from London and Paris" or "Tell me about hub airports in the Middle East"
+                "Find flights from JFK to LAX" or "Which airports are the major hubs in Europe?"
               </span>
             </div>
           </div>

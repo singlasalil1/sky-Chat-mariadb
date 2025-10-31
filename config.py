@@ -10,6 +10,11 @@ class Config:
     DB_USER = os.getenv('DB_USER', 'skychat_user')
     DB_PASSWORD = os.getenv('DB_PASSWORD', 'test')
     DB_NAME = os.getenv('DB_NAME', 'skychat')
+    DB_SSL = os.getenv('DB_SSL', 'false').lower() == 'true'
+    DB_SSL_VERIFY_CERT = os.getenv('DB_SSL_VERIFY_CERT', 'false').lower() == 'true'
+    DB_SSL_CA_PATH = os.getenv('DB_SSL_CA_PATH')
+    DB_SSL_CERT_PATH = os.getenv('DB_SSL_CERT_PATH')
+    DB_SSL_KEY_PATH = os.getenv('DB_SSL_KEY_PATH')
 
     # Flask Configuration
     PORT = int(os.getenv('PORT', 5000))

@@ -3,19 +3,11 @@ import ChatMessage from '../components/ChatMessage';
 import NetworkViewer from '../components/NetworkViewer';
 import AIThinkingProcess from '../components/AIThinkingProcess';
 import SmartSuggestions from '../components/SmartSuggestions';
-import PerformanceMetrics from '../components/PerformanceMetrics';
 import { sendChatMessage } from '../services/api';
 import '../styles/Chat.css';
 
 const Chat = () => {
-  const [messages, setMessages] = useState([
-    {
-      text: "Welcome to SkyChat! I'm your AI-powered flight intelligence assistant. I can help you with structured queries and conversational questions using RAG technology.",
-      type: 'welcome',
-      isUser: false,
-      id: Date.now()
-    }
-  ]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [viewMode, setViewMode] = useState('chat'); // 'chat' or 'network'
@@ -23,8 +15,23 @@ const Chat = () => {
   const [aiStage, setAiStage] = useState('understanding');
   const [queryMetrics, setQueryMetrics] = useState(null);
   const [showSuggestions, setShowSuggestions] = useState(true);
+  const defaultRecentQueries = useMemo(() => [
+    'Find flights from JFK to LAX',
+    'Which airports are the major hubs in Europe and why?',
+    'How do airline alliances affect route networks?',
+    'What routes connect North America to Australia?'
+  ], []);
+  const [recentQueries, setRecentQueries] = useState(defaultRecentQueries);
   const messagesEndRef = useRef(null);
   const chatMessagesRef = useRef(null);
+  const inputRef = useRef(null);
+
+  const stageStatus = useMemo(() => ({
+    understanding: 'Understanding your request',
+    vector: 'Retrieving relevant knowledge',
+    analytics: 'Analyzing aviation insights',
+    generation: 'Crafting your answer'
+  }), []);
 
   const scrollToBottom = useCallback(() => {
     if (messagesEndRef.current) {
@@ -36,80 +43,65 @@ const Chat = () => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  const suggestions = useMemo(() => [
-    // Classic Mode - Structured Queries
-    'Find flights from JFK to LAX',
-    'Search airport London',
-    'Show busiest routes',
-    'Show longest flights',
-    'Routes from SFO',
-    'Airlines in USA',
-    'Find flights from LHR to DXB',
-    'Search airport Tokyo',
-    'Routes from CDG',
-
-    // RAG Mode - Conversational Queries
-    'What are the major hub airports in Europe?',
-    'Tell me about airlines that fly to Asia',
-    'Which airports are located in the Middle East?',
-    'What routes connect North America to Australia?',
-    'Explain the difference between IATA and ICAO codes',
-    'What are the busiest international flight routes?',
-    'Which airlines operate the most routes globally?',
-    'Tell me about airports in island nations',
-    'What are common connection points for transatlantic flights?',
-    'Which cities have multiple major airports?',
-
-    // Complex Multi-Part Queries
-    'What airlines fly from New York and what are their main destinations?',
-    'Compare routes from London Heathrow and Paris Charles de Gaulle',
-    'Which Asian cities are major aviation hubs and why?',
-    'What are the longest non-stop flight routes in the world?',
-    'Tell me about low-cost carriers and where they typically operate',
-    'What makes an airport a "hub" and which are the biggest?',
-    'How do airline alliances affect route networks?',
-    'What airports serve as gateways to South America?'
+  const starterPrompts = useMemo(() => [
+    {
+      id: 'direct-routes',
+      icon: '✈️',
+      title: 'Plan direct flights',
+      description: 'Discover nonstop options and operating airlines between two airports.',
+      prompt: 'Find flights from JFK to LAX',
+      tone: 'Classic'
+    },
+    {
+      id: 'hub-comparison',
+      icon: '🧠',
+      title: 'Compare global hubs',
+      description: 'See how major airports stack up on routes, capacity, and coverage.',
+      prompt: 'Which airports are the major hubs in Europe and why?',
+      tone: 'AI Insight'
+    },
+    {
+      id: 'alliance-analytics',
+      icon: '🤝',
+      title: 'Understand alliances',
+      description: 'Break down alliance reach, member carriers, and strategic advantages.',
+      prompt: 'How do airline alliances affect route networks?',
+      tone: 'Analytics'
+    },
+    {
+      id: 'regional-explorer',
+      icon: '🌍',
+      title: 'Explore regions',
+      description: 'Uncover the airlines and routes connecting continents or corridors.',
+      prompt: 'What routes connect North America to Australia?',
+      tone: 'Explorer'
+    },
+    {
+      id: 'city-airlines',
+      icon: '🛫',
+      title: 'Discover city airlines',
+      description: 'Find which carriers operate from a specific city or airport.',
+      prompt: 'Which airlines operate from Singapore?',
+      tone: 'Data'
+    },
+    {
+      id: 'aviation-knowledge',
+      icon: '💡',
+      title: 'Decode aviation terms',
+      description: 'Let SkyChat explain the concepts behind aviation codes and processes.',
+      prompt: 'Explain the difference between IATA and ICAO codes.',
+      tone: 'AI Insight'
+    }
   ], []);
 
-  const getRelevantQuestions = useCallback(() => {
-    const lastMessage = messages[messages.length - 1];
+  const updateRecentQueries = useCallback((query) => {
+    if (!query) return;
 
-    if (messages.length === 1) {
-      return [
-        'Show me the busiest routes',
-        'What are the longest flights?',
-        'Find flights from JFK to LAX',
-        'Show major hub airports'
-      ];
-    }
-
-    if (lastMessage && !lastMessage.isUser && lastMessage.text?.type === 'direct_routes') {
-      return [
-        'Show routes with connections',
-        'What are alternative airlines?',
-        'Show me the distance',
-        'Find nearby airports'
-      ];
-    }
-
-    if (lastMessage && !lastMessage.isUser && lastMessage.text?.type === 'airport_search') {
-      return [
-        'Show routes from this airport',
-        'Find nearby airports',
-        'Which airlines serve here?',
-        'Show connection hubs'
-      ];
-    }
-
-    return [
-      'Show busiest routes',
-      'Find hub airports',
-      'Search for airports',
-      'Show longest flights'
-    ];
-  }, [messages]);
-
-  const relevantQuestions = getRelevantQuestions();
+    setRecentQueries(prev => {
+      const filtered = prev.filter(item => item.toLowerCase() !== query.toLowerCase());
+      return [query, ...filtered].slice(0, 4);
+    });
+  }, []);
 
   const handleSendMessage = useCallback(async () => {
     if (!input.trim() || isLoading) return;
@@ -120,12 +112,16 @@ const Chat = () => {
 
     setInput('');
     setShowSuggestions(false);
+    updateRecentQueries(userMessage);
     setMessages(prev => [...prev, {
       text: userMessage,
       isUser: true,
       id: messageId,
       timestamp: new Date().toISOString()
     }]);
+    if (inputRef.current) {
+      inputRef.current.style.height = '56px';
+    }
     setIsLoading(true);
     setShowAIProcess(true);
 
@@ -202,20 +198,37 @@ const Chat = () => {
     }
   }, [input, isLoading]);
 
-  const handleKeyPress = useCallback((e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
+  const handleInputChange = useCallback((event) => {
+    const value = event.target.value;
+    setInput(value);
+    setShowSuggestions(false);
+
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+      const nextHeight = Math.min(inputRef.current.scrollHeight, 200);
+      inputRef.current.style.height = `${Math.max(nextHeight, 56)}px`;
+    }
+  }, []);
+
+  const handleKeyDown = useCallback((event) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
       handleSendMessage();
     }
   }, [handleSendMessage]);
 
-  const handleSuggestionClick = useCallback((suggestion) => {
-    setInput(suggestion);
-  }, []);
-
   const handleSmartQuerySelect = useCallback((query) => {
     setInput(query);
     setShowSuggestions(false);
+    updateRecentQueries(query);
+    if (inputRef.current) {
+      requestAnimationFrame(() => {
+        inputRef.current.style.height = 'auto';
+        const nextHeight = Math.min(inputRef.current.scrollHeight, 200);
+        inputRef.current.style.height = `${Math.max(nextHeight, 56)}px`;
+        inputRef.current.focus();
+      });
+    }
     // Auto-submit the query
     setTimeout(() => {
       const messageId = Date.now();
@@ -230,6 +243,9 @@ const Chat = () => {
       setInput('');
       setIsLoading(true);
       setShowAIProcess(true);
+      if (inputRef.current) {
+        inputRef.current.style.height = '56px';
+      }
 
       // Simulate AI processing stages
       const processQuery = async () => {
@@ -309,95 +325,145 @@ const Chat = () => {
     }, 100);
   }, []);
 
+  const agentStatus = isLoading ? stageStatus[aiStage] : 'Online • Ask anything about global aviation';
+
   return (
     <div className="chat-page">
-      <div className="app-header">
-        <div className="header-brand">
-          <span className="brand-icon">✈️</span>
-          <span className="brand-name">SkyChat <span className="brand-adventures">Adventures</span></span>
-        </div>
-        <div className="header-actions">
-          <div className="view-switcher">
-            <button
-              className={`view-btn ${viewMode === 'chat' ? 'active' : ''}`}
-              onClick={() => setViewMode('chat')}
-            >
-              💬 Chat
-            </button>
-            <button
-              className={`view-btn ${viewMode === 'network' ? 'active' : ''}`}
-              onClick={() => setViewMode('network')}
-            >
-              🌐 Network
-            </button>
+      <div className="chat-background" />
+      <div className="chat-container">
+        <div className="app-header">
+          <div className="header-brand">
+            <span className="brand-icon">✈️</span>
+            <span className="brand-name">SkyChat <span className="brand-adventures">Adventures</span></span>
+          </div>
+          <div className="header-actions">
+            <div className="view-switcher">
+              <button
+                className={`view-btn ${viewMode === 'chat' ? 'active' : ''}`}
+                onClick={() => setViewMode('chat')}
+              >
+                💬 Chat
+              </button>
+              <button
+                className={`view-btn ${viewMode === 'network' ? 'active' : ''}`}
+                onClick={() => setViewMode('network')}
+              >
+                🌐 Network
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <>
         <div className="chat-layout">
           <div className="chat-main-section">
-
             {viewMode === 'chat' ? (
               <div className="chat-content-area">
-                <div className="chat-messages" ref={chatMessagesRef}>
-            {messages.map((msg, index) => (
-              <ChatMessage
-                key={msg.id}
-                message={msg.text}
-                isUser={msg.isUser}
-                type={msg.type}
-                timestamp={msg.timestamp}
-                metrics={msg.metrics}
-              />
-            ))}
-
-            {!isLoading && showSuggestions && (
-              <SmartSuggestions onSelectQuery={handleSmartQuerySelect} />
-            )}
-
-            {!isLoading && !showSuggestions && messages.length > 1 && (
-              <button
-                className="show-suggestions-btn"
-                onClick={() => setShowSuggestions(true)}
-              >
-                📋 Show Example Queries
-              </button>
-            )}
-
-            {isLoading && showAIProcess && (
-              <AIThinkingProcess
-                stage={aiStage}
-                stats={queryMetrics || {}}
-              />
-            )}
-                  <div ref={messagesEndRef} />
-                </div>
-
-                <div className="chat-input-bar">
-                  <div className="chat-input-wrapper">
-                    <input
-                      type="text"
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      placeholder="Type your message... (Press Enter to send)"
-                      disabled={isLoading}
-                      className="chat-input"
-                      autoComplete="off"
-                    />
-                    <button
-                      className="send-button"
-                      onClick={handleSendMessage}
-                      disabled={isLoading || !input.trim()}
-                      aria-label="Send message"
-                    >
-                      {isLoading ? (
-                        <span className="button-spinner">⟳</span>
-                      ) : (
-                        <span className="button-icon">➤</span>
+                <div className="conversation-card">
+                  <div className="conversation-header">
+                    <div className="conversation-profile">
+                      <div className="profile-avatar">🤖</div>
+                      <div className="profile-copy">
+                        <h1>SkyChat Copilot</h1>
+                        <span className={`profile-status ${isLoading ? 'busy' : 'online'}`}>{agentStatus}</span>
+                      </div>
+                    </div>
+                    <div className="conversation-meta">
+                      {queryMetrics?.resultCount !== undefined && (
+                        <div className="meta-pill">📊 {queryMetrics.resultCount} results</div>
                       )}
-                    </button>
+                      {queryMetrics?.dbTime && (
+                        <div className="meta-pill">⏱️ {queryMetrics.dbTime}</div>
+                      )}
+                      {isLoading && (
+                        <div className="meta-pill ai-stage">{stageStatus[aiStage]}</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="conversation-body" ref={chatMessagesRef}>
+                    {messages.map((msg) => (
+                      <ChatMessage
+                        key={msg.id}
+                        message={msg.text}
+                        isUser={msg.isUser}
+                        type={msg.type}
+                        timestamp={msg.timestamp}
+                        metrics={msg.metrics}
+                      />
+                    ))}
+
+                    {!isLoading && showSuggestions && (
+                      <div className="suggestion-panel">
+                        <SmartSuggestions
+                          prompts={starterPrompts}
+                          onSelectQuery={handleSmartQuerySelect}
+                        />
+                      </div>
+                    )}
+
+                    {!isLoading && !showSuggestions && messages.length > 1 && (
+                      <button
+                        className="show-suggestions-btn"
+                        onClick={() => setShowSuggestions(true)}
+                      >
+                        ✨ Show Starter Prompts
+                      </button>
+                    )}
+
+                    {isLoading && showAIProcess && (
+                      <div className="thinking-panel">
+                        <AIThinkingProcess
+                          stage={aiStage}
+                          stats={queryMetrics || {}}
+                        />
+                      </div>
+                    )}
+                    <div ref={messagesEndRef} />
+                  </div>
+
+                  <div className="conversation-footer">
+                    {/* <div className="quick-questions">
+                      {recentQueries.map((question, index) => (
+                        <button
+                          key={`${question}-${index}`}
+                          className="quick-question-chip"
+                          onClick={() => handleSmartQuerySelect(question)}
+                          type="button"
+                          disabled={isLoading}
+                        >
+                          {question}
+                        </button>
+                      ))}
+                    </div> */}
+
+                    <div className={`chat-input-bar ${isLoading ? 'disabled' : ''}`}>
+                      <div className="chat-input-wrapper">
+                        <textarea
+                          ref={inputRef}
+                          value={input}
+                          onChange={handleInputChange}
+                          onKeyDown={handleKeyDown}
+                          placeholder="Ask about flights, routes, airlines or try Shift + Enter for a new line"
+                          disabled={isLoading}
+                          className="chat-input"
+                          rows={1}
+                        />
+                        <button
+                          className="send-button"
+                          onClick={handleSendMessage}
+                          disabled={isLoading || !input.trim()}
+                          aria-label="Send message"
+                          type="button"
+                        >
+                          {isLoading ? (
+                            <span className="button-spinner">⟳</span>
+                          ) : (
+                            <span className="button-icon">➤</span>
+                          )}
+                        </button>
+                      </div>
+                      <div className="input-hint">SkyChat understands natural language. Paste data, ask comparisons, or explore aviation networks.</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -406,7 +472,7 @@ const Chat = () => {
             )}
           </div>
         </div>
-      </>
+      </div>
     </div>
   );
 };
