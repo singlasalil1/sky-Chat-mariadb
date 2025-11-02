@@ -9,15 +9,31 @@ class DatabaseConnection:
     def get_pool(cls):
         if cls._pool is None:
             try:
-                cls._pool = mariadb.ConnectionPool(
+                pool_config = dict(
                     host=Config.DB_HOST,
                     port=Config.DB_PORT,
                     user=Config.DB_USER,
                     password=Config.DB_PASSWORD,
                     database=Config.DB_NAME,
                     pool_name='skychat_pool',
-                    pool_size=10
+                    pool_size=10,
                 )
+
+                if Config.DB_SSL:
+                    pool_config["ssl"] = True
+
+                    if Config.DB_SSL_VERIFY_CERT:
+                        pool_config["ssl_verify_cert"] = True
+                    if Config.DB_SSL_CA_PATH:
+                        pool_config["ssl_ca"] = Config.DB_SSL_CA_PATH
+                    if Config.DB_SSL_CERT_PATH:
+                        pool_config["ssl_cert"] = Config.DB_SSL_CERT_PATH
+                    if Config.DB_SSL_KEY_PATH:
+                        pool_config["ssl_key"] = Config.DB_SSL_KEY_PATH
+                else:
+                    pool_config["ssl"] = False
+
+                cls._pool = mariadb.ConnectionPool(**pool_config)
                 print(f"Connected to MariaDB at {Config.DB_HOST}:{Config.DB_PORT}")
             except mariadb.Error as e:
                 print(f"Error connecting to MariaDB: {e}")
