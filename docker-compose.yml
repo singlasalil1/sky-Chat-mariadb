@@ -62,6 +62,59 @@ services:
         echo "Model downloaded successfully!"
     restart: "no"
 
+  # Database Setup Service (runs once to create schema)
+  db-setup:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: skychat-db-setup
+    environment:
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_NAME=${DB_NAME:-skychat}
+      - DB_USER=${DB_USER:-skychat_user}
+      - DB_PASSWORD=${DB_PASSWORD:-skychat123}
+    networks:
+      - skychat-network
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo '📋 Setting up database schema...'
+        python3 src/database/setup.py
+        echo '✅ Database schema created successfully!'
+      "
+    restart: "no"
+
+  # Data Import Service (runs once to import OpenFlights data)
+  data-import:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: skychat-data-import
+    environment:
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_NAME=${DB_NAME:-skychat}
+      - DB_USER=${DB_USER:-skychat_user}
+      - DB_PASSWORD=${DB_PASSWORD:-skychat123}
+      - AIRPORTS_URL=${AIRPORTS_URL:-https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat}
+      - AIRLINES_URL=${AIRLINES_URL:-https://raw.githubusercontent.com/jpatokal/openflights/master/data/airlines.dat}
+      - ROUTES_URL=${ROUTES_URL:-https://raw.githubusercontent.com/jpatokal/openflights/master/data/routes.dat}
+    networks:
+      - skychat-network
+    depends_on:
+      db-setup:
+        condition: service_completed_successfully
+    command: >
+      sh -c "
+        echo '📦 Importing OpenFlights data...'
+        python3 src/database/import_data.py
+        echo '✅ Data import completed successfully!'
+      "
+    restart: "no"
+
   # Backend Flask Application
   backend:
     build:
@@ -98,6 +151,8 @@ services:
         condition: service_healthy
       ollama:
         condition: service_healthy
+      data-import:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
       interval: 30s
